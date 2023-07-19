@@ -10,3 +10,13 @@ while read -r line; do
   fi
 done < test
 ```
+
+### To tag the users, Keeping username in one file and email (tags) in second file
+
+```
+exec {fdA}<user
+exec {fdB}<email 
+while read -r -u "$fdA" lineA && read -r -u "$fdB" lineB; do aws iam tag-user --user-name $lineA --tags '{"Key": "email", "Value": "'$lineB'"}'; do
+ne
+exec {fdA}>&- {fdB}>&-
+```
