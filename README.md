@@ -20,3 +20,10 @@ while read -r -u "$fdA" lineA && read -r -u "$fdB" lineB; do aws iam tag-user --
 ne
 exec {fdA}>&- {fdB}>&-
 ```
+
+### Tagging aws iamuser accounts using a while loop (reading username from file)
+
+```
+while read -r line; do aws iam tag-user --user-name $line --tags '{"Key": "type", "Value": "iamuser"}'; done <$julyinput
+```
+
