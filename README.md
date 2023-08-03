@@ -86,3 +86,59 @@ for region in $(echo "$regions" | jq -r '.[]'); do
   done
 done
 ```
+### Get the list of usernames for which Force_MFA policy is not attached
+
+```
+#!/bin/bash
+
+# Get the list of users
+users=$(aws iam list-users --profile AWS-Volterra-secops | jq -r '.Users[].UserName')
+
+# Loop through each user and check for the presence of "Force_MFA" policy
+for user in $users; do
+    policies=$(aws iam list-attached-user-policies --user-name "$user" --profile AWS-Volterra-secops | jq -r '.AttachedPolicies[].PolicyName')
+
+    # Check if "Force_MFA" policy is not present in the list of policies
+    if ! echo "$policies" | grep -q "Force_MFA"; then
+        echo "Username: $user"
+        
+    fi
+done
+```
+
+### Generate credential report and append owner email information retrived from IAM user tags in the column against usernames
+
+```
+#!/bin/bash
+
+# Function to get the values from the JSON object or print "NA" if empty
+get_value() {
+  local value="$1"
+  if [[ -z "$value" ]]; then
+    echo "NA"
+  else
+    echo "$value"
+  fi
+}
+
+# Output CSV header
+echo "user,password_enabled,access_key_1_active,access_key_2_active,mfa_active,email" > credential_report_output.csv
+
+# Get the AWS Credential Report in CSV format using the specified profile
+aws --profile AWS-Volterra-prod-secops iam generate-credential-report
+aws --profile AWS-Volterra-prod-secops iam wait credential-report-not-present
+aws --profile AWS-Volterra-prod-secops iam generate-credential-report
+aws --profile AWS-Volterra-prod-secops iam wait credential-report-complete
+aws --profile AWS-Volterra-prod-secops iam get-credential-report --output text --query 'Content' | base64 -d > credential_report.csv
+
+# Process each IAM user in the credential report
+while IFS=',' read -r user password_enabled access_key_1_active access_key_2_active mfa_active; do
+  # Get the email tag for the IAM user using the specified profile
+  email=$(aws --profile AWS-Volterra-prod-secops iam list-user-tags --user-name "$user" --query 'Tags[?Key==`email`].Value' --output text)
+
+  # Output the values in CSV format
+  echo "$(get_value "$user"),$(get_value "$password_enabled"),$(get_value "$access_key_1_active"),$(get_value "$access_key_2_active"),$(get_value "$mfa_active"),$(get_value "$email")" >> credential_report_output.csv
+done < <(tail -n +2 credential_report.csv)
+
+```
+
