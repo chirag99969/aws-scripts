@@ -130,16 +130,16 @@ get_value() {
 echo "user,password_enabled,access_key_1_active,access_key_2_active,mfa_active,email" > credential_report_output.csv
 
 # Get the AWS Credential Report in CSV format using the specified profile
-aws --profile AWS-Volterra-prod-secops iam generate-credential-report
-aws --profile AWS-Volterra-prod-secops iam wait credential-report-not-present
-aws --profile AWS-Volterra-prod-secops iam generate-credential-report
-aws --profile AWS-Volterra-prod-secops iam wait credential-report-complete
-aws --profile AWS-Volterra-prod-secops iam get-credential-report --output text --query 'Content' | base64 -d > credential_report.csv
+aws --profile cybersecnerd iam generate-credential-report
+aws --profile cybersecnerd iam wait credential-report-not-present
+aws --profile cybersecnerd iam generate-credential-report
+aws --profile cybersecnerd iam wait credential-report-complete
+aws --profile cybersecnerd iam get-credential-report --output text --query 'Content' | base64 -d > credential_report.csv
 
 # Process each IAM user in the credential report
 while IFS=',' read -r user password_enabled access_key_1_active access_key_2_active mfa_active; do
   # Get the email tag for the IAM user using the specified profile
-  email=$(aws --profile AWS-Volterra-prod-secops iam list-user-tags --user-name "$user" --query 'Tags[?Key==`email`].Value' --output text)
+  email=$(aws --profile cybersecnerd iam list-user-tags --user-name "$user" --query 'Tags[?Key==`email`].Value' --output text)
 
   # Output the values in CSV format
   echo "$(get_value "$user"),$(get_value "$password_enabled"),$(get_value "$access_key_1_active"),$(get_value "$access_key_2_active"),$(get_value "$mfa_active"),$(get_value "$email")" >> credential_report_output.csv
