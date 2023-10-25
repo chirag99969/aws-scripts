@@ -91,17 +91,22 @@ done
 ```
 #!/bin/bash
 
-# Get the list of users
-users=$(aws iam list-users --profile AWS-Volterra-secops | jq -r '.Users[].UserName')
+# AWS Account ID
+AWS_ACCOUNT_ID="xxxxxxxxxxxx"
 
-# Loop through each user and check for the presence of "Force_MFA" policy
-for user in $users; do
-    policies=$(aws iam list-attached-user-policies --user-name "$user" --profile AWS-Volterra-secops | jq -r '.AttachedPolicies[].PolicyName')
+# Policy ARN to check for
+POLICY_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:policy/Force_MFA"
 
-    # Check if "Force_MFA" policy is not present in the list of policies
-    if ! echo "$policies" | grep -q "Force_MFA"; then
+# Get all users in the account
+all_users=$(aws iam list-users --query 'Users[*].UserName' --output text)
+
+# Loop through each user and check for the presence of the specified policy
+for user in $all_users; do
+    policies=$(aws iam list-attached-user-policies --user-name "$user" --query 'AttachedPolicies[*].PolicyArn' --output text)
+
+    # Check if the specified policy is not present in the list of policies
+    if ! echo "$policies" | grep -q "$POLICY_ARN"; then
         echo "Username: $user"
-        
     fi
 done
 ```
