@@ -150,6 +150,6 @@ done < <(tail -n +2 credential_report.csv)
 # Deploy AWS Aconfig rules using conformance pack
 
 ```
-aws configservice put-conformance-pack --conformance-pack-name secops-rds --template-s3-uri "s3://secops-cfts/Operational-rds-CIS-GlobalResources.yml" --delivery-s3-bucket secops-cfts --region us-east-2 --profile AWS-Volterra-prod-secops
+aws configservice put-conformance-pack --conformance-pack-name secops-rds --template-s3-uri "s3://bucketname/Operational-rds-CIS-GlobalResources.yml" --delivery-s3-bucket secops-cfts --region us-east-2 --profile TEST-PROFILE
 ```
 
