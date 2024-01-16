@@ -153,3 +153,8 @@ done < <(tail -n +2 credential_report.csv)
 aws configservice put-conformance-pack --conformance-pack-name secops-rds --template-s3-uri "s3://bucketname/Operational-rds-CIS-GlobalResources.yml" --delivery-s3-bucket bucketname --region us-east-2 --profile TEST-PROFILE
 ```
 
+## Describe stacks
+
+```
+for REGION in $(aws ec2 describe-regions --profile AWS-Volterra-prod-secops | jq -r ".Regions[].RegionName"); do echo $REGION && aws cloudformation describe-stacks --profile AWS-Volterra-prod-secops --region $REGION| jq -r ".Stacks[].StackName";done
+```
