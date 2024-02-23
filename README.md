@@ -208,3 +208,27 @@ for REGION in $(aws ec2 describe-regions --profile AWS-Volterra-prod-secops | jq
     ]
 }
 ```
+
+### AttachUserPoliciesForSpecificPolicies
+
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowAttachUserPolicyForSpecificPolicies",
+      "Effect": "Allow",
+      "Action": "iam:AttachUserPolicy",
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyArn": [
+            "arn:aws:iam::123456789012:policy/policy1",
+            "arn:aws:iam::123456789012:policy/policy2"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
