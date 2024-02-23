@@ -158,3 +158,53 @@ aws configservice put-conformance-pack --conformance-pack-name secops-rds --temp
 ```
 for REGION in $(aws ec2 describe-regions --profile AWS-Volterra-prod-secops | jq -r ".Regions[].RegionName"); do echo $REGION && aws cloudformation describe-stacks --profile AWS-Volterra-prod-secops --region $REGION| jq -r ".Stacks[].StackName";done
 ```
+
+
+## IAM Policy COnditional Access 
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "organizations:*",
+            "Resource": "*",
+            "Condition": {
+                "StringLike": {
+                    "aws:userid": "AROAWxxxxxxxxxxxxx:gulatic@google.com"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "account:PutAlternateContact",
+                "account:DeleteAlternateContact",
+                "account:GetAlternateContact",
+                "account:GetContactInformation",
+                "account:PutContactInformation",
+                "account:ListRegions",
+                "account:EnableRegion",
+                "account:DisableRegion"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringLike": {
+                    "aws:userid": "AROAWxxxxxxxxxxxxx:gulatic@google.com"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:CreateServiceLinkedRole",
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "iam:AWSServiceName": "organizations.amazonaws.com"
+                }
+            }
+        }
+    ]
+}
+```
