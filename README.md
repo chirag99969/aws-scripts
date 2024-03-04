@@ -233,9 +233,8 @@ for REGION in $(aws ec2 describe-regions --profile AWS-Volterra-prod-secops | jq
 }
 ```
 
-## Lambda Fucntion for sending email notification to IAM Account owners retrieving email from tags, AWS Configs Access Key age, sending emails using SES to rotate keys
+# Lambda Function for sending email notification to IAM Account owners retrieving email from tags, AWS Configs Access Key age, sending emails using SES to rotate keys
 
-```
 import boto3
 import json
 import smtplib
@@ -257,7 +256,7 @@ def send_email_smtp(sender_email, recipient_email, smtp_username, smtp_password,
     msg.attach(MIMEText(body, 'plain'))
 
     # Connect to the SMTP server
-    server = smtplib.SMTP('YOUR_SMTP_SERVER', 587)  # Replace with SES SMTP server and port
+    server = smtplib.SMTP('email-smtp.us-west-2.amazonaws.com', 587)  # Replace with SES SMTP server and port
     server.starttls()
 
     # Login with SMTP credentials
@@ -269,30 +268,30 @@ def send_email_smtp(sender_email, recipient_email, smtp_username, smtp_password,
     # Close the SMTP server connection
     server.quit()
 
-# Lambda entry point
+#### Lambda entry point
 def lambda_handler(event, context):
     # Retrieve SMTP credentials from Secrets Manager
-    secret_name = 'SECRET_NAME'  # Replace with the name of your secret in Secrets Manager
+    secret_name = 'secops_smtp'  # Replace with the name of your secret in Secrets Manager
     secret = get_secret(secret_name)
     smtp_username = secret['smtp_username']
     smtp_password = secret['smtp_password']
 
     # Replace these with your sender and target email addresses
-    sender_email = 'secops-dream@google.com'
-    target_email = 'c.gulati@google.com'  # Add your target email address here
+    sender_email = 'google-service-account-siem@cloud.google.com'
+    target_email = 'chirag.gulati@google.com'  # Add your target email address here
 
     # AWS Config and IAM clients
     config_client = boto3.client('config', 
-                                 aws_access_key_id="YOUR_ACCESS_KEY",
-                                 aws_secret_access_key="YOUR_SECRET_KEY")
+                                 aws_access_key_id="AKIA123",
+                                 aws_secret_access_key="p4Q3123")
     iam_client = boto3.client('iam', 
-                              aws_access_key_id="YOUR_ACCESS_KEY",
-                              aws_secret_access_key="YOUR_SECRET_KEY")
+                              aws_access_key_id="AKIA123",
+                              aws_secret_access_key="p4Q3123")
 
     # Get non-compliant IAM access keys from AWS Config
     response_users = iam_client.list_users()
     response_config = config_client.get_compliance_details_by_config_rule(
-        ConfigRuleName='IAM_ACCESS_KEYS_ROTATED',
+        ConfigRuleName='IAM_Access_KEYS_ROTATED',
         ComplianceTypes=['NON_COMPLIANT'],
         Limit=99
     )
@@ -339,4 +338,4 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': 'Email sent successfully!'
     }
-```
+
