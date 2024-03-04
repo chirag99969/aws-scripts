@@ -232,3 +232,111 @@ for REGION in $(aws ec2 describe-regions --profile AWS-Volterra-prod-secops | jq
   ]
 }
 ```
+
+## Lambda Fucntion for sending email notification to IAM Account owners retrieving email from tags, AWS Configs Access Key age, sending emails using SES to rotate keys
+
+```
+import boto3
+import json
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+def get_secret(secret_name):
+    client = boto3.client('secretsmanager', region_name='us-east-2')
+    response = client.get_secret_value(SecretId=secret_name)
+    secret = json.loads(response['SecretString'])
+    return secret
+
+def send_email_smtp(sender_email, recipient_email, smtp_username, smtp_password, subject, body):
+    # Create the email message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Connect to the SMTP server
+    server = smtplib.SMTP('YOUR_SMTP_SERVER', 587)  # Replace with SES SMTP server and port
+    server.starttls()
+
+    # Login with SMTP credentials
+    server.login(smtp_username, smtp_password)
+
+    # Send the email
+    server.sendmail(sender_email, recipient_email, msg.as_string())
+
+    # Close the SMTP server connection
+    server.quit()
+
+# Lambda entry point
+def lambda_handler(event, context):
+    # Retrieve SMTP credentials from Secrets Manager
+    secret_name = 'SECRET_NAME'  # Replace with the name of your secret in Secrets Manager
+    secret = get_secret(secret_name)
+    smtp_username = secret['smtp_username']
+    smtp_password = secret['smtp_password']
+
+    # Replace these with your sender and target email addresses
+    sender_email = 'secops-dream@google.com'
+    target_email = 'c.gulati@google.com'  # Add your target email address here
+
+    # AWS Config and IAM clients
+    config_client = boto3.client('config', 
+                                 aws_access_key_id="YOUR_ACCESS_KEY",
+                                 aws_secret_access_key="YOUR_SECRET_KEY")
+    iam_client = boto3.client('iam', 
+                              aws_access_key_id="YOUR_ACCESS_KEY",
+                              aws_secret_access_key="YOUR_SECRET_KEY")
+
+    # Get non-compliant IAM access keys from AWS Config
+    response_users = iam_client.list_users()
+    response_config = config_client.get_compliance_details_by_config_rule(
+        ConfigRuleName='IAM_ACCESS_KEYS_ROTATED',
+        ComplianceTypes=['NON_COMPLIANT'],
+        Limit=99
+    )
+
+    # Create a dictionary to map resource IDs to user names
+    resource_id_to_username = {user['UserId']: user['UserName'] for user in response_users['Users']}
+
+    # Counter for number of UserName values
+    user_count = 0
+
+    # Iterate over the EvaluationResults
+    for evaluation_result in response_config['EvaluationResults']:
+        resource_id = evaluation_result['EvaluationResultIdentifier']['EvaluationResultQualifier']['ResourceId']
+
+        # Check if the resource ID exists in the dictionary
+        if resource_id in resource_id_to_username:
+            username = resource_id_to_username[resource_id]
+            user_count += 1  # Increment the counter
+
+            # Get the tags for the user
+            try:
+                response_tags = iam_client.list_user_tags(UserName=username)
+                user_tags = response_tags['Tags']
+                # Find the 'email' tag and send an email if found
+                email_tag = next((tag['Value'] for tag in user_tags if tag['Key'] == 'email'), None)
+                if email_tag is not None:
+                    # Construct email subject and body
+                    subject = 'IAM Access Keys Rotation Alert'
+                    body = f"Hello {username},\n\nYour AWS IAM access keys are not rotated as per policy.\n\nResource ID: {resource_id}\nUser Name: {username}\n\nPlease take necessary action to rotate your access keys.\n\nRegards,\nYour AWS Account"
+
+                    # Send email using SES function
+                    if email_tag == target_email:
+                        send_email_smtp(sender_email, email_tag, smtp_username, smtp_password, subject, body)
+                else:
+                    print("Email tag not found for user:", username)
+            except Exception as e:
+                print("Error retrieving tags for user:", username, "-", str(e))
+        else:
+            print("Resource ID:", resource_id, "UserName: Not found")
+
+    print("Total Users:", user_count)
+
+    return {
+        'statusCode': 200,
+        'body': 'Email sent successfully!'
+    }
+```
