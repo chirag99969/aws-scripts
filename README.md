@@ -340,3 +340,59 @@ def lambda_handler(event, context):
     }
 ```
 
+# Lambda Function for SES and AWS Secrets manager
+
+```
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import boto3
+import json
+
+def get_secret(secret_name):
+    client = boto3.client('secretsmanager', region_name='YOUR_REGION')
+    response = client.get_secret_value(SecretId=secret_name)
+    secret = json.loads(response['SecretString'])
+    return secret
+
+def send_email_smtp(sender_email, recipient_email, smtp_username, smtp_password):
+    # Create the email message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = 'Test Email from SES using SMTP'
+    body = 'This is a test email sent from SES using SMTP.'
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Connect to the SMTP server
+    server = smtplib.SMTP('YOUR_SMTP_SERVER', 587)  # Replace with SES SMTP server and port
+    server.starttls()
+
+    # Login with SMTP credentials
+    server.login(smtp_username, smtp_password)
+
+    # Send the email
+    server.sendmail(sender_email, recipient_email, msg.as_string())
+
+    # Close the SMTP server connection
+    server.quit()
+
+# Lambda entry point
+def lambda_handler(event, context):
+    # Retrieve SMTP credentials from Secrets Manager
+    secret_name = 'YOUR_SECRET_NAME'  # Replace with the name of your secret in Secrets Manager
+    secret = get_secret(secret_name)
+    smtp_username = secret['smtp_username']
+    smtp_password = secret['smtp_password']
+
+    # Replace these with your sender and recipient email addresses
+    sender_email = 'YOUR_SENDER_EMAIL'
+    recipient_email = 'RECIPIENT_EMAIL'
+
+    send_email_smtp(sender_email, recipient_email, smtp_username, smtp_password)
+
+    return {
+        'statusCode': 200,
+        'body': 'Email sent successfully!'
+    }
+```
