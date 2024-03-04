@@ -234,7 +234,7 @@ for REGION in $(aws ec2 describe-regions --profile AWS-Volterra-prod-secops | jq
 ```
 
 # Lambda Function for sending email notification to IAM Account owners retrieving email from tags, AWS Configs Access Key age, sending emails using SES to rotate keys
-
+```
 import boto3
 import json
 import smtplib
@@ -338,4 +338,5 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': 'Email sent successfully!'
     }
+```
 
