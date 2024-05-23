@@ -396,3 +396,84 @@ def lambda_handler(event, context):
         'body': 'Email sent successfully!'
     }
 ```
+
+
+# Lambda Fuction for sending IAM User tags to Splunk 
+
+```
+import boto3
+import json
+from datetime import datetime
+
+def lambda_handler(event, context):
+    # Get the current date in YYYY-MM-DD-HH:MM:SS format
+    current_date = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+
+    # Initialize the boto3 client for IAM
+    iam_client = boto3.client('iam')
+
+    # Initialize the boto3 client for S3
+    s3_client = boto3.client('s3')
+
+    # List IAM users
+    response = iam_client.list_users()
+    users = response['Users']
+
+    # Initialize an empty list to store user tags
+    user_tags_list = []
+
+    # Loop through each user and get their tags
+    for user in users:
+        user_name = user['UserName']
+        user_id = user['UserId']
+        arn = user['Arn']
+        #CreateDate = user['CreateDate']
+        #PasswordLastUsed = user['PasswordLastUsed']
+        tags_response = iam_client.list_user_tags(UserName=user_name)
+        tags = tags_response['Tags']
+        
+        # Filter the tags to get 'type' and 'email'
+        type_tag = next((tag['Value'] for tag in tags if tag['Key'] == 'type'), None)
+        email_tag = next((tag['Value'] for tag in tags if tag['Key'] == 'email'), None)
+        
+        # Create a dictionary with the required information
+        user_tags = {
+            'userName': user_name,
+            'aws_accountId': '123456789',
+            'user_id': user_id,
+            'arn': arn,
+            #'CreateDate': CreateDate,
+            #'PasswordLastUsed': PasswordLastUsed,
+            'type': type_tag,
+            'email': email_tag
+        }
+        
+        # Append the dictionary to the list
+        user_tags_list.append(user_tags)
+
+    # Convert the list to JSON format
+    #user_tags_json = json.dumps(user_tags_list)
+    user_tags_json = "\n".join(json.dumps(user_tags) for user_tags in user_tags_list)
+
+    # Define the S3 bucket and key
+    bucket_name = 'bucketName'
+    folder_name = 'folder'
+    file_name = f'output_tags_{current_date}.json'
+    s3_key = f'{folder_name}/{file_name}'
+
+    # Upload the JSON data to S3
+    s3_client.put_object(Bucket=bucket_name, Key=s3_key, Body=user_tags_json)
+
+    # Return the response
+    return {
+        'statusCode': 200,
+        'body': json.dumps({
+            'message': 'Data uploaded successfully',
+            's3_key': s3_key
+        })
+    }
+
+# Note: To run this code locally for testing, you can uncomment the following lines:
+# if __name__ == "__main__":
+#     lambda_handler(None, None)
+
